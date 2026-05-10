@@ -99,64 +99,84 @@ export async function transcribeWhisper(audio: Blob, apiKey: string): Promise<st
   return (json.text || "").trim();
 }
 
-export interface CopyEditContext {
+export interface DraftContext {
   acronyms: string;
 }
 
-export async function copyEdit(
+export async function draftEmail(
   text: string,
   apiKey: string,
-  ctx: CopyEditContext
+  ctx: DraftContext
 ): Promise<string> {
   if (!apiKey) return text;
   const trimmed = text.trim();
   if (!trimmed) return trimmed;
 
-  const system = buildCopyEditSystemPrompt(ctx);
+  const system = buildDraftSystemPrompt(ctx);
 
   const res = await requestUrl({
-    url: "https://api.anthropic.com/v1/messages",
+    url: "https://api.openai.com/v1/chat/completions",
     method: "POST",
     headers: {
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-      "content-type": "application/json",
-      "anthropic-dangerous-direct-browser-access": "true",
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "claude-haiku-4-5-20251001",
-      max_tokens: 8192,
-      system,
-      messages: [{ role: "user", content: trimmed }],
+      model: "gpt-4o",
+      temperature: 0.3,
+      messages: [
+        { role: "system", content: system },
+        { role: "user", content: trimmed },
+      ],
     }),
     throw: false,
   });
 
   if (res.status >= 400) {
-    throw new Error(`Anthropic ${res.status}: ${truncate(res.text, 300)}`);
+    throw new Error(`OpenAI draft ${res.status}: ${truncate(res.text, 300)}`);
   }
   const json = res.json as {
-    content?: Array<{ type: string; text?: string }>;
+    choices?: Array<{ message?: { content?: string } }>;
   };
-  const textBlock = (json.content || []).find((b) => b.type === "text");
-  return (textBlock?.text || trimmed).trim();
+  const out = json.choices?.[0]?.message?.content;
+  return stripLeadingSubjectLabel((out || trimmed).trim());
 }
 
-function buildCopyEditSystemPrompt(ctx: CopyEditContext): string {
-  const acronyms = ctx.acronyms.trim();
-  return [
-    "You copy-edit short voice or text notes a manager has captured as the gist of an email they want drafted later by a separate drafting agent.",
+function buildDraftSystemPrompt(ctx: DraftContext): string {
+  const lines = [
+    "You draft professional emails on behalf of Dean Franklin Garrett, Dean of Student Support Services at a community college. The Dean has dictated or typed the gist of an email he wants drafted. Format his input into a polished email per the rules below.",
+    "",
+    "The Dean's input will typically mention the recipient, context, and key points. Use those.",
+    "",
+    "Output format (in this exact order, with no other text):",
+    "1. Subject line on its own line — format: [Action/Topic] — [Program or Department if relevant]. Do NOT prefix with 'Subject:'. Write only the subject text.",
+    "2. Blank line.",
+    "3. Salutation appropriate to the recipient (e.g., 'Hi [First Name],' for collegial, 'Dear [Title] [Last Name],' for formal).",
+    "4. Body — three paragraphs maximum, under 200 words total:",
+    "   - Paragraph 1: opening acknowledgement.",
+    "   - Paragraph 2: core message.",
+    "   - Paragraph 3: next step or request.",
+    "5. Sign-off (exactly, on its own lines):",
+    "",
+    "   Best regards,",
+    "",
+    "   Franklin",
+    "",
     "Rules:",
-    "- Remove filler words (um, uh, like, you know).",
-    "- Fix grammar, punctuation, and obvious word-choice mistakes for clarity.",
-    "- Preserve every fact, name, recipient, deadline, request, and instruction the speaker mentioned. The drafting agent depends on these.",
-    "- Keep the speaker's first-person voice — do not draft the email, do not add a salutation or signature, do not add a subject line, do not paraphrase or summarize.",
-    "- Preserve all acronyms and proper nouns from the list below exactly as they appear.",
-    "- Return ONLY the cleaned text — no preamble, no quotes, no explanation, no heading.",
-    acronyms ? `Acronyms and proper nouns to preserve: ${acronyms}` : "",
-  ]
-    .filter(Boolean)
-    .join("\n");
+    "- Tone: professional, warm, concise.",
+    "- Preserve every fact, name, deadline, and request the Dean mentioned.",
+    "- Do not invent details the Dean did not provide. If a recipient name is missing, use [Recipient Name] as a placeholder.",
+    "- Return ONLY the drafted email. No preamble, no quotes, no 'Subject:' label, no explanations.",
+  ];
+  const acronyms = ctx.acronyms.trim();
+  if (acronyms) {
+    lines.push("", `Preserve these acronyms verbatim: ${acronyms}`);
+  }
+  return lines.join("\n");
+}
+
+export function stripLeadingSubjectLabel(text: string): string {
+  return text.replace(/^\s*subject\s*:\s*/i, "");
 }
 
 interface MultipartField {

@@ -1,7 +1,7 @@
 import { App, ButtonComponent, Modal, Notice, Setting } from "obsidian";
 import { saveEmail } from "./append";
 import {
-  copyEdit,
+  draftEmail,
   startRecording,
   transcribeWhisper,
   type VoiceRecorder,
@@ -14,6 +14,8 @@ export class CaptureModal extends Modal {
 
   private textArea: HTMLTextAreaElement | null = null;
   private recordButton: ButtonComponent | null = null;
+  private saveButton: ButtonComponent | null = null;
+  private saveAnotherButton: ButtonComponent | null = null;
   private recorder: VoiceRecorder | null = null;
   private recording = false;
   private busy = false;
@@ -29,8 +31,8 @@ export class CaptureModal extends Modal {
     contentEl.createEl("h2", { text: "Capture email" });
 
     new Setting(contentEl)
-      .setName("Email")
-      .setDesc("Tap Record to dictate, or type below. Copy-edit runs automatically when both API keys are set; otherwise the raw text is saved as-is.")
+      .setName("Email gist")
+      .setDesc("Tap Record to dictate, or type below. On Save, GPT-4o drafts the email per the standard format (subject line, three paragraphs, Best regards / Franklin sign-off) and writes the drafted email to AI Team/Team_Inbox. Requires OpenAI API key.")
       .addTextArea((t) => {
         this.textArea = t.inputEl;
         t.inputEl.rows = 6;
@@ -48,15 +50,16 @@ export class CaptureModal extends Modal {
       });
 
     new Setting(contentEl)
-      .addButton((b) =>
-        b
-          .setButtonText("Save")
+      .addButton((b) => {
+        this.saveButton = b;
+        b.setButtonText("Save")
           .setCta()
-          .onClick(() => this.save(false))
-      )
-      .addButton((b) =>
-        b.setButtonText("Save & capture another").onClick(() => this.save(true))
-      );
+          .onClick(() => this.save(false));
+      })
+      .addButton((b) => {
+        this.saveAnotherButton = b;
+        b.setButtonText("Save & capture another").onClick(() => this.save(true));
+      });
 
     setTimeout(() => this.textArea?.focus(), 0);
   }
@@ -88,19 +91,10 @@ export class CaptureModal extends Modal {
 
     try {
       const audio = await this.recorder!.stop();
-      let transcript = await transcribeWhisper(
+      const transcript = await transcribeWhisper(
         audio,
         this.plugin.settings.openaiApiKey
       );
-
-      if (this.plugin.settings.anthropicApiKey && transcript) {
-        this.recordButton.setButtonText("Copy-editing...");
-        transcript = await copyEdit(
-          transcript,
-          this.plugin.settings.anthropicApiKey,
-          { acronyms: this.plugin.settings.customAcronyms }
-        );
-      }
 
       this.text = mergeTranscript(this.text, transcript);
       if (this.textArea) {
@@ -130,16 +124,20 @@ export class CaptureModal extends Modal {
       return;
     }
 
+    this.busy = true;
+    this.setSaveButtonsDisabled(true);
+    this.saveButton?.setButtonText("Drafting...");
+
     let finalText = raw;
-    if (this.plugin.settings.anthropicApiKey) {
+    if (this.plugin.settings.openaiApiKey) {
       try {
-        finalText = await copyEdit(
+        finalText = await draftEmail(
           raw,
-          this.plugin.settings.anthropicApiKey,
+          this.plugin.settings.openaiApiKey,
           { acronyms: this.plugin.settings.customAcronyms }
         );
       } catch (e) {
-        new Notice(`Copy-edit failed, saving raw text: ${e instanceof Error ? e.message : String(e)}`);
+        new Notice(`Drafting failed, saving raw text: ${e instanceof Error ? e.message : String(e)}`);
         finalText = raw;
       }
     }
@@ -153,9 +151,13 @@ export class CaptureModal extends Modal {
       );
     } catch (e) {
       new Notice(`Save failed: ${e instanceof Error ? e.message : String(e)}`);
+      this.busy = false;
+      this.setSaveButtonsDisabled(false);
+      this.saveButton?.setButtonText("Save");
       return;
     }
 
+    this.busy = false;
     new Notice(`Saved ${savedPath}`);
 
     const reopen = forceAnother || this.plugin.settings.showAnotherAfterSave;
@@ -163,6 +165,11 @@ export class CaptureModal extends Modal {
     if (reopen) {
       setTimeout(() => new CaptureModal(this.app, this.plugin).open(), 200);
     }
+  }
+
+  private setSaveButtonsDisabled(disabled: boolean) {
+    this.saveButton?.setDisabled(disabled);
+    this.saveAnotherButton?.setDisabled(disabled);
   }
 
   onClose() {

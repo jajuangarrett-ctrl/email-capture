@@ -3,7 +3,6 @@ import type EmailCapturePlugin from "../main";
 
 export interface EmailCaptureSettings {
   openaiApiKey: string;
-  anthropicApiKey: string;
   inboxFolderPath: string;
   showAnotherAfterSave: boolean;
   customAcronyms: string;
@@ -11,7 +10,6 @@ export interface EmailCaptureSettings {
 
 export const DEFAULT_SETTINGS: EmailCaptureSettings = {
   openaiApiKey: "",
-  anthropicApiKey: "",
   inboxFolderPath: "AI Team/Team_Inbox",
   showAnotherAfterSave: true,
   customAcronyms: "CalWORKs, VPSS, FJG",
@@ -54,11 +52,11 @@ export class EmailCaptureSettingTab extends PluginSettingTab {
         })
       );
 
-    containerEl.createEl("h3", { text: "Voice transcription & AI copy-edit" });
+    containerEl.createEl("h3", { text: "OpenAI" });
 
     new Setting(containerEl)
       .setName("OpenAI API key")
-      .setDesc("Used by Whisper to transcribe voice captures. Stored locally in plugin data.")
+      .setDesc("Used by Whisper for voice transcription AND by GPT-4o to draft captured emails on save. Required for both. Stored locally in plugin data.")
       .addText((t) => {
         t.inputEl.type = "password";
         t
@@ -71,22 +69,8 @@ export class EmailCaptureSettingTab extends PluginSettingTab {
       });
 
     new Setting(containerEl)
-      .setName("Anthropic API key")
-      .setDesc("Used by Claude Haiku to copy-edit captures (clean grammar, preserve meaning). Optional — without it, the raw text is saved as-is.")
-      .addText((t) => {
-        t.inputEl.type = "password";
-        t
-          .setPlaceholder("sk-ant-...")
-          .setValue(this.plugin.settings.anthropicApiKey)
-          .onChange(async (v) => {
-            this.plugin.settings.anthropicApiKey = v.trim();
-            await this.plugin.saveSettings();
-          });
-      });
-
-    new Setting(containerEl)
       .setName("Custom acronyms")
-      .setDesc("Comma-separated acronyms and proper nouns the copy-edit pass should preserve verbatim.")
+      .setDesc("Comma-separated acronyms and proper nouns the drafting pass should preserve verbatim.")
       .addText((t) =>
         t
           .setPlaceholder("CalWORKs, VPSS, FJG")
