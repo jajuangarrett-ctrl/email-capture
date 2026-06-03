@@ -51,3 +51,43 @@ export function isDraftRefusal(text: string): boolean {
 
   return false;
 }
+
+export function isGenericTemplateDraft(text: string): boolean {
+  const t = (text || "").trim();
+  if (!t) return true;
+
+  const placeholders = Array.from(t.matchAll(/\[[^\]]+\]/g)).map((m) => m[0].toLowerCase());
+  const nonRecipientPlaceholders = placeholders.filter((p) => p !== "[recipient name]");
+  if (nonRecipientPlaceholders.length > 0) return true;
+  if (placeholders.length > 1) return true;
+
+  const genericPhrases = [
+    /your insights and contributions were invaluable/i,
+    /please let me know if you have any questions or need further clarification/i,
+    /i look forward to our continued collaboration/i,
+    /implementation of \[specific action/i,
+  ];
+  return genericPhrases.some((re) => re.test(t));
+}
+
+export function buildGroundedFallbackDraft(raw: string): string {
+  const body = raw.trim();
+  const subject = subjectFromRaw(body);
+  return `${subject}
+
+Hello [Recipient Name],
+
+${body}
+
+Best regards,
+
+Franklin`;
+}
+
+function subjectFromRaw(raw: string): string {
+  const firstLine = raw.split(/\r?\n/).map((line) => line.trim()).find(Boolean) || "Follow-up";
+  const withoutGreeting = firstLine.replace(/^(hello|hi|dear)\s+[^,]+,?\s*/i, "").trim();
+  const base = withoutGreeting || firstLine || "Follow-up";
+  const clipped = base.length > 64 ? `${base.slice(0, 61).trim()}...` : base;
+  return clipped.replace(/[.?!,;:]+$/g, "") || "Follow-up";
+}

@@ -1,7 +1,17 @@
 import { requestUrl } from "obsidian";
-import { isDraftRefusal, stripLeadingSubjectLabel } from "./draft";
+import {
+  buildGroundedFallbackDraft,
+  isDraftRefusal,
+  isGenericTemplateDraft,
+  stripLeadingSubjectLabel,
+} from "./draft";
 
-export { isDraftRefusal, stripLeadingSubjectLabel };
+export {
+  buildGroundedFallbackDraft,
+  isDraftRefusal,
+  isGenericTemplateDraft,
+  stripLeadingSubjectLabel,
+};
 
 export interface VoiceRecorder {
   stop: () => Promise<Blob>;
@@ -129,7 +139,7 @@ export async function draftEmail(
       temperature: 0.3,
       messages: [
         { role: "system", content: system },
-        { role: "user", content: trimmed },
+        { role: "user", content: `SOURCE GIST:\n<<<\n${trimmed}\n>>>` },
       ],
     }),
     throw: false,
@@ -171,10 +181,11 @@ function buildDraftSystemPrompt(ctx: DraftContext): string {
     "- Do not use generic opening pleasantries such as 'I hope you are doing well.'",
     "- Do not use generic closing pleasantries before the sign-off.",
     "- Preserve every fact, name, deadline, and request the Dean mentioned.",
+    "- The user's SOURCE GIST is the only source of truth. The drafted email must clearly use the specific words, facts, and intent from the SOURCE GIST.",
     "- CRITICAL: Do NOT invent or assume the email's topic. The subject, body, and recipient must all be derived from the Dean's input. Do not pull topics from the acronym list, your knowledge of the Dean's role, or general assumptions about Student Support Services. If the input does not specify a topic, you cannot invent one.",
     "- If a recipient name is missing in the input, use [Recipient Name] as a placeholder. Never invent a recipient.",
-    "- Draft from sparse notes when needed. Never refuse because the input is short, thin, vague, or missing details.",
-    "- If important details are missing, use clear placeholders such as [Recipient Name], [topic], [date], or [next step] inside the email instead of asking the Dean to try again.",
+    "- Draft from sparse notes when needed. If the SOURCE GIST is short, make the body a natural rewrite of that exact gist. Do not expand it into a generic meeting follow-up, event follow-up, or program update.",
+    "- Do not use fill-in-the-blank placeholders except [Recipient Name]. Never output placeholders such as [topic], [date], [next step], [Committee Name], or [specific action].",
     "- Return ONLY the drafted email. No preamble, no quotes, no 'Subject:' label, no explanations.",
   ];
   const acronyms = ctx.acronyms.trim();

@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { isDraftRefusal, stripLeadingSubjectLabel } from "./draft";
+import {
+  buildGroundedFallbackDraft,
+  isDraftRefusal,
+  isGenericTemplateDraft,
+  stripLeadingSubjectLabel,
+} from "./draft";
 
 const REAL_DRAFT = `CalWORKs Hours Availability
 
@@ -84,5 +89,46 @@ describe("isDraftRefusal", () => {
     // Sign-off but no Franklin name — suspicious, treat as refusal
     const noName = "Hello there. Best regards, the team.";
     expect(isDraftRefusal(noName)).toBe(true);
+  });
+});
+
+describe("isGenericTemplateDraft", () => {
+  it("catches fill-in-the-blank templates with non-recipient placeholders", () => {
+    const template = `[Meeting Follow-up] — [Committee Name]
+
+Hello [Recipient Name],
+
+Thank you for attending the recent meeting regarding [topic].
+
+We agreed on the implementation of [specific action or decision].
+
+Best regards,
+
+Franklin`;
+    expect(isGenericTemplateDraft(template)).toBe(true);
+  });
+
+  it("allows a real draft with only a missing-recipient placeholder", () => {
+    const draft = `Schedule Update
+
+Hello [Recipient Name],
+
+However, I did not receive an email from him in advance indicating that he planned to attend our event.
+
+Please encourage him to communicate any schedule changes directly to me by email so I can update the counselors' schedules accurately.
+
+Best regards,
+
+Franklin`;
+    expect(isGenericTemplateDraft(draft)).toBe(false);
+  });
+});
+
+describe("buildGroundedFallbackDraft", () => {
+  it("builds an email-shaped fallback using the captured text", () => {
+    const out = buildGroundedFallbackDraft("Please ask Sam to send the revised schedule by Friday.");
+    expect(out).toContain("Please ask Sam to send the revised schedule by Friday.");
+    expect(out).toContain("Hello [Recipient Name],");
+    expect(out).toContain("Best regards,\n\nFranklin");
   });
 });

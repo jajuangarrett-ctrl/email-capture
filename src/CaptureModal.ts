@@ -2,7 +2,9 @@ import { App, ButtonComponent, Modal, Notice, Setting } from "obsidian";
 import { saveEmail } from "./append";
 import {
   draftEmail,
+  buildGroundedFallbackDraft,
   isDraftRefusal,
+  isGenericTemplateDraft,
   startRecording,
   transcribeWhisper,
   type VoiceRecorder,
@@ -164,14 +166,14 @@ export class CaptureModal extends Modal {
           this.plugin.settings.openaiApiKey,
           { acronyms: this.plugin.settings.customAcronyms }
         );
-        if (isDraftRefusal(drafted)) {
-          // GPT-4o returned a clarification ("I'm here to assist...") instead
-          // of an email. Persist the raw gist so the dictation isn't lost, and
-          // surface a visible warning so the Dean knows the draft didn't happen.
+        if (isDraftRefusal(drafted) || isGenericTemplateDraft(drafted)) {
+          // GPT-4o returned a clarification or fill-in-the-blank template.
+          // Save a simple local draft grounded in the captured text so the
+          // Dean gets an email-shaped output without losing the actual gist.
           draftFellBack = true;
-          finalText = raw;
+          finalText = buildGroundedFallbackDraft(raw);
           new Notice(
-            "GPT did not return a formatted draft — saved your raw gist instead.",
+            "GPT returned a generic response — saved a simple draft from your text instead.",
             10000
           );
         } else {
@@ -182,14 +184,15 @@ export class CaptureModal extends Modal {
         if (msg === "INSUFFICIENT_INPUT") {
           // Legacy sentinel from v0.2.3. Save the raw input verbatim so
           // nothing is lost if an older model response still appears.
+          finalText = buildGroundedFallbackDraft(raw);
           new Notice(
-            "GPT did not return a formatted draft — saved your raw text instead.",
+            "GPT did not return a formatted draft — saved a simple draft from your text instead.",
             10000
           );
         } else {
           new Notice(`Drafting failed, saving raw text: ${msg}`, 8000);
+          finalText = raw;
         }
-        finalText = raw;
         draftFellBack = true;
       }
     }
