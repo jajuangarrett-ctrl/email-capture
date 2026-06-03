@@ -2,9 +2,6 @@ import { App, ButtonComponent, Modal, Notice, Setting } from "obsidian";
 import { saveEmail } from "./append";
 import {
   draftEmail,
-  buildGroundedFallbackDraft,
-  isDraftRefusal,
-  isGenericTemplateDraft,
   startRecording,
   transcribeWhisper,
   type VoiceRecorder,
@@ -147,53 +144,21 @@ export class CaptureModal extends Modal {
     // Sync the cache so any downstream code (and a re-Save) stays consistent.
     this.text = raw;
 
-    // Visible confirmation that the right content is being sent. The Dean
-    // saw earlier captures come back generic; this preview proves the input
-    // landed before the draft runs.
-    const preview = raw.length > 80 ? `${raw.slice(0, 80)}...` : raw;
-    new Notice(`Drafting from: ${preview}`, 5000);
-
     this.busy = true;
     this.setSaveButtonsDisabled(true);
     this.saveButton?.setButtonText("Drafting...");
 
     let finalText = raw;
-    let draftFellBack = false;
     if (this.plugin.settings.openaiApiKey) {
       try {
-        const drafted = await draftEmail(
+        finalText = await draftEmail(
           raw,
           this.plugin.settings.openaiApiKey,
           { acronyms: this.plugin.settings.customAcronyms }
         );
-        if (isDraftRefusal(drafted) || isGenericTemplateDraft(drafted)) {
-          // GPT-4o returned a clarification or fill-in-the-blank template.
-          // Save a simple local draft grounded in the captured text so the
-          // Dean gets an email-shaped output without losing the actual gist.
-          draftFellBack = true;
-          finalText = buildGroundedFallbackDraft(raw);
-          new Notice(
-            "GPT returned a generic response — saved a simple draft from your text instead.",
-            10000
-          );
-        } else {
-          finalText = drafted;
-        }
       } catch (e) {
-        const msg = e instanceof Error ? e.message : String(e);
-        if (msg === "INSUFFICIENT_INPUT") {
-          // Legacy sentinel from v0.2.3. Save the raw input verbatim so
-          // nothing is lost if an older model response still appears.
-          finalText = buildGroundedFallbackDraft(raw);
-          new Notice(
-            "GPT did not return a formatted draft — saved a simple draft from your text instead.",
-            10000
-          );
-        } else {
-          new Notice(`Drafting failed, saving raw text: ${msg}`, 8000);
-          finalText = raw;
-        }
-        draftFellBack = true;
+        new Notice(`Drafting failed, saving raw text: ${e instanceof Error ? e.message : String(e)}`, 8000);
+        finalText = raw;
       }
     }
 
@@ -213,9 +178,7 @@ export class CaptureModal extends Modal {
     }
 
     this.busy = false;
-    if (!draftFellBack) {
-      new Notice(`Saved ${savedPath}`);
-    }
+    new Notice(`Saved ${savedPath}`);
 
     const reopen = forceAnother || this.plugin.settings.showAnotherAfterSave;
     this.close();
