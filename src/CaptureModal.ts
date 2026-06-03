@@ -166,13 +166,12 @@ export class CaptureModal extends Modal {
         );
         if (isDraftRefusal(drafted)) {
           // GPT-4o returned a clarification ("I'm here to assist...") instead
-          // of an email. That happens when the gist is too thin to draft from.
-          // Persist the raw gist so the dictation isn't lost, and surface a
-          // visible warning so the Dean knows the draft didn't happen.
+          // of an email. Persist the raw gist so the dictation isn't lost, and
+          // surface a visible warning so the Dean knows the draft didn't happen.
           draftFellBack = true;
           finalText = raw;
           new Notice(
-            "Draft was too thin to format — saved your raw gist. Add more detail and re-capture if you want it drafted.",
+            "GPT did not return a formatted draft — saved your raw gist instead.",
             10000
           );
         } else {
@@ -181,10 +180,10 @@ export class CaptureModal extends Modal {
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
         if (msg === "INSUFFICIENT_INPUT") {
-          // The model flagged the input as too thin via the sentinel token.
-          // Save the raw input verbatim so nothing is lost.
+          // Legacy sentinel from v0.2.3. Save the raw input verbatim so
+          // nothing is lost if an older model response still appears.
           new Notice(
-            "Input was too thin to draft from — saved your raw text instead. Add a recipient + topic + key points and try again.",
+            "GPT did not return a formatted draft — saved your raw text instead.",
             10000
           );
         } else {

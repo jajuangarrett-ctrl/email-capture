@@ -37,6 +37,9 @@ export function isDraftRefusal(text: string): boolean {
     /^(?:please )?provide (?:the )?(?:details|more )/i,
     /^could you (?:please )?(?:provide|share|clarify)/i,
     /^to draft (?:the|this|an?) email/i,
+    /^(?:the )?input (?:was|is) too thin/i,
+    /^too thin to draft/i,
+    /^saved your raw text instead/i,
     /^sure[,!.]? (?:i'?(?:d|ll)|let me|please)/i,
     /^of course[,!.]? (?:please|could|i'?(?:d|ll))/i,
   ];

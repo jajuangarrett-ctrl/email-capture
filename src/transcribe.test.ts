@@ -51,6 +51,14 @@ describe("isDraftRefusal", () => {
     ).toBe(true);
   });
 
+  it("catches the thin-input fallback message reported from mobile", () => {
+    expect(
+      isDraftRefusal(
+        "Input was too thin to draft from — saved your raw text instead. Add a recipient + topic + key points and try again."
+      )
+    ).toBe(true);
+  });
+
   it("catches common clarification openers", () => {
     expect(isDraftRefusal("I'd be happy to help. Please share more details about the recipient.")).toBe(true);
     expect(isDraftRefusal("Could you please clarify who the recipient should be?")).toBe(true);
