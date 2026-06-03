@@ -23,6 +23,9 @@ export function isDraftRefusal(text: string): boolean {
   const t = (text || "").trim();
   if (!t) return true;
 
+  // Hard sentinel from the drafting system prompt.
+  if (/^__INSUFFICIENT_INPUT__\b/.test(t)) return true;
+
   const hasSignoff = /best regards\s*,/i.test(t) && /\bfranklin\b/i.test(t);
   if (hasSignoff) return false;
 

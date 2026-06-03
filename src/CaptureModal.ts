@@ -126,7 +126,12 @@ export class CaptureModal extends Modal {
       new Notice("Voice capture still running.", 6000);
       return;
     }
-    const raw = this.text.trim();
+    // Read directly from the DOM so a missed onChange / paste-race doesn't
+    // silently feed an empty string to GPT-4o, which then hallucinates a
+    // generic Dean-flavored email from the system prompt context alone.
+    const liveValue = (this.textArea?.value ?? "").trim();
+    const cachedValue = this.text.trim();
+    const raw = liveValue || cachedValue;
     if (!raw) {
       // Make this loud and keep the modal open so the Dean can actually see
       // the failure instead of the modal silently closing on mobile.
@@ -137,6 +142,14 @@ export class CaptureModal extends Modal {
       this.textArea?.focus();
       return;
     }
+    // Sync the cache so any downstream code (and a re-Save) stays consistent.
+    this.text = raw;
+
+    // Visible confirmation that the right content is being sent. The Dean
+    // saw earlier captures come back generic; this preview proves the input
+    // landed before the draft runs.
+    const preview = raw.length > 80 ? `${raw.slice(0, 80)}...` : raw;
+    new Notice(`Drafting from: ${preview}`, 5000);
 
     this.busy = true;
     this.setSaveButtonsDisabled(true);
@@ -166,10 +179,17 @@ export class CaptureModal extends Modal {
           finalText = drafted;
         }
       } catch (e) {
-        new Notice(
-          `Drafting failed, saving raw text: ${e instanceof Error ? e.message : String(e)}`,
-          8000
-        );
+        const msg = e instanceof Error ? e.message : String(e);
+        if (msg === "INSUFFICIENT_INPUT") {
+          // The model flagged the input as too thin via the sentinel token.
+          // Save the raw input verbatim so nothing is lost.
+          new Notice(
+            "Input was too thin to draft from — saved your raw text instead. Add a recipient + topic + key points and try again.",
+            10000
+          );
+        } else {
+          new Notice(`Drafting failed, saving raw text: ${msg}`, 8000);
+        }
         finalText = raw;
         draftFellBack = true;
       }

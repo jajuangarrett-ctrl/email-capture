@@ -142,7 +142,13 @@ export async function draftEmail(
     choices?: Array<{ message?: { content?: string } }>;
   };
   const out = json.choices?.[0]?.message?.content;
-  return stripLeadingSubjectLabel((out || trimmed).trim());
+  const cleaned = stripLeadingSubjectLabel((out || trimmed).trim());
+  // Hard sentinel from the system prompt — bubble up so the caller can save
+  // the raw gist instead of a hallucinated draft.
+  if (/^__INSUFFICIENT_INPUT__\b/.test(cleaned.trim())) {
+    throw new Error("INSUFFICIENT_INPUT");
+  }
+  return cleaned;
 }
 
 function buildDraftSystemPrompt(ctx: DraftContext): string {
@@ -170,8 +176,10 @@ function buildDraftSystemPrompt(ctx: DraftContext): string {
     "- Do not use generic opening pleasantries such as 'I hope you are doing well.'",
     "- Do not use generic closing pleasantries before the sign-off.",
     "- Preserve every fact, name, deadline, and request the Dean mentioned.",
-    "- Do not invent details the Dean did not provide. If a recipient name is missing, use [Recipient Name] as a placeholder.",
-    "- Return ONLY the drafted email. No preamble, no quotes, no 'Subject:' label, no explanations.",
+    "- CRITICAL: Do NOT invent or assume the email's topic. The subject, body, and recipient must all be derived from the Dean's input. Do not pull topics from the acronym list, your knowledge of the Dean's role, or general assumptions about Student Support Services. If the input does not specify a topic, you cannot invent one.",
+    "- If a recipient name is missing in the input, use [Recipient Name] as a placeholder. Never invent a recipient.",
+    "- INSUFFICIENT INPUT CHECK: If the Dean's input is empty, whitespace, a single short fragment, or does not contain any usable subject/topic/recipient information, output EXACTLY the literal token __INSUFFICIENT_INPUT__ (with no surrounding text, quotes, formatting, sign-off, or explanation). Do not attempt to draft a generic email in that case.",
+    "- Return ONLY the drafted email (or the __INSUFFICIENT_INPUT__ token). No preamble, no quotes, no 'Subject:' label, no explanations.",
   ];
   const acronyms = ctx.acronyms.trim();
   if (acronyms) {

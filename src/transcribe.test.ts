@@ -37,6 +37,12 @@ describe("isDraftRefusal", () => {
     expect(isDraftRefusal("   \n\n  ")).toBe(true);
   });
 
+  it("catches the __INSUFFICIENT_INPUT__ sentinel", () => {
+    expect(isDraftRefusal("__INSUFFICIENT_INPUT__")).toBe(true);
+    expect(isDraftRefusal("  __INSUFFICIENT_INPUT__  ")).toBe(true);
+    expect(isDraftRefusal("__INSUFFICIENT_INPUT__ extra junk")).toBe(true);
+  });
+
   it("catches the exact GPT-4o clarification we saw in the wild", () => {
     expect(
       isDraftRefusal(
