@@ -1,4 +1,7 @@
 import { requestUrl } from "obsidian";
+import { isDraftRefusal, stripLeadingSubjectLabel } from "./draft";
+
+export { isDraftRefusal, stripLeadingSubjectLabel };
 
 export interface VoiceRecorder {
   stop: () => Promise<Blob>;
@@ -177,9 +180,6 @@ function buildDraftSystemPrompt(ctx: DraftContext): string {
   return lines.join("\n");
 }
 
-export function stripLeadingSubjectLabel(text: string): string {
-  return text.replace(/^\s*subject\s*:\s*/i, "");
-}
 
 interface MultipartField {
   name: string;

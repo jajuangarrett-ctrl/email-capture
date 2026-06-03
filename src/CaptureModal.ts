@@ -2,6 +2,7 @@ import { App, ButtonComponent, Modal, Notice, Setting } from "obsidian";
 import { saveEmail } from "./append";
 import {
   draftEmail,
+  isDraftRefusal,
   startRecording,
   transcribeWhisper,
   type VoiceRecorder,
@@ -96,13 +97,20 @@ export class CaptureModal extends Modal {
         this.plugin.settings.openaiApiKey
       );
 
-      this.text = mergeTranscript(this.text, transcript);
-      if (this.textArea) {
-        this.textArea.value = this.text;
-        this.textArea.focus();
+      if (!transcript.trim()) {
+        new Notice(
+          "Voice capture returned empty. Check microphone permissions and try again.",
+          8000
+        );
+      } else {
+        this.text = mergeTranscript(this.text, transcript);
+        if (this.textArea) {
+          this.textArea.value = this.text;
+          this.textArea.focus();
+        }
       }
     } catch (e) {
-      new Notice(`Voice capture failed: ${e instanceof Error ? e.message : String(e)}`);
+      new Notice(`Voice capture failed: ${e instanceof Error ? e.message : String(e)}`, 8000);
     } finally {
       this.busy = false;
       this.recorder = null;
@@ -115,12 +123,18 @@ export class CaptureModal extends Modal {
 
   private async save(forceAnother: boolean) {
     if (this.busy) {
-      new Notice("Voice capture still running.");
+      new Notice("Voice capture still running.", 6000);
       return;
     }
     const raw = this.text.trim();
     if (!raw) {
-      new Notice("Add some text before saving.");
+      // Make this loud and keep the modal open so the Dean can actually see
+      // the failure instead of the modal silently closing on mobile.
+      new Notice(
+        "Nothing to save — the textarea is empty. Dictate or type your gist, then tap Save.",
+        8000
+      );
+      this.textArea?.focus();
       return;
     }
 
@@ -129,16 +143,35 @@ export class CaptureModal extends Modal {
     this.saveButton?.setButtonText("Drafting...");
 
     let finalText = raw;
+    let draftFellBack = false;
     if (this.plugin.settings.openaiApiKey) {
       try {
-        finalText = await draftEmail(
+        const drafted = await draftEmail(
           raw,
           this.plugin.settings.openaiApiKey,
           { acronyms: this.plugin.settings.customAcronyms }
         );
+        if (isDraftRefusal(drafted)) {
+          // GPT-4o returned a clarification ("I'm here to assist...") instead
+          // of an email. That happens when the gist is too thin to draft from.
+          // Persist the raw gist so the dictation isn't lost, and surface a
+          // visible warning so the Dean knows the draft didn't happen.
+          draftFellBack = true;
+          finalText = raw;
+          new Notice(
+            "Draft was too thin to format — saved your raw gist. Add more detail and re-capture if you want it drafted.",
+            10000
+          );
+        } else {
+          finalText = drafted;
+        }
       } catch (e) {
-        new Notice(`Drafting failed, saving raw text: ${e instanceof Error ? e.message : String(e)}`);
+        new Notice(
+          `Drafting failed, saving raw text: ${e instanceof Error ? e.message : String(e)}`,
+          8000
+        );
         finalText = raw;
+        draftFellBack = true;
       }
     }
 
@@ -150,7 +183,7 @@ export class CaptureModal extends Modal {
         { text: finalText }
       );
     } catch (e) {
-      new Notice(`Save failed: ${e instanceof Error ? e.message : String(e)}`);
+      new Notice(`Save failed: ${e instanceof Error ? e.message : String(e)}`, 8000);
       this.busy = false;
       this.setSaveButtonsDisabled(false);
       this.saveButton?.setButtonText("Save");
@@ -158,7 +191,9 @@ export class CaptureModal extends Modal {
     }
 
     this.busy = false;
-    new Notice(`Saved ${savedPath}`);
+    if (!draftFellBack) {
+      new Notice(`Saved ${savedPath}`);
+    }
 
     const reopen = forceAnother || this.plugin.settings.showAnotherAfterSave;
     this.close();
