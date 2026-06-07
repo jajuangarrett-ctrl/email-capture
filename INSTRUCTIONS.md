@@ -4,10 +4,10 @@ Read this before changing the `email-capture` Obsidian plugin.
 
 ## Project locations
 
-- Source repo: `/Users/franklingarrett/Documents/Codex/plugins/email-capture/`
-- Vault project docs: `/Users/franklingarrett/Documents/FJG Vault/Artifacts/Email Capture App/`
+- Source repo: `/Users/franklingarrett/Codex/plugins/email-capture/`
+- Vault project docs: `/Users/franklingarrett/FJG Vault/Artifacts/Email Capture App/`
 - GitHub repo: `https://github.com/jajuangarrett-ctrl/email-capture`
-- Desktop installed build output: `/Users/franklingarrett/Documents/FJG Vault/.obsidian/plugins/email-capture/`
+- Desktop installed build output, if present: `/Users/franklingarrett/FJG Vault/.obsidian/plugins/email-capture/`
 
 Treat `.obsidian/plugins/email-capture/` as installed build output, not source.
 
