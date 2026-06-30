@@ -1,4 +1,8 @@
 import { requestUrl } from "obsidian";
+import { buildDraftSystemPrompt, stripLeadingSubjectLabel, type DraftContext } from "./draftPrompt";
+
+export type { DraftContext } from "./draftPrompt";
+export { buildDraftSystemPrompt, stripLeadingSubjectLabel } from "./draftPrompt";
 
 export interface VoiceRecorder {
   stop: () => Promise<Blob>;
@@ -99,10 +103,6 @@ export async function transcribeWhisper(audio: Blob, apiKey: string): Promise<st
   return (json.text || "").trim();
 }
 
-export interface DraftContext {
-  acronyms: string;
-}
-
 export async function draftEmail(
   text: string,
   apiKey: string,
@@ -141,45 +141,6 @@ export async function draftEmail(
   const out = json.choices?.[0]?.message?.content;
   const cleaned = stripLeadingSubjectLabel((out || trimmed).trim());
   return cleaned;
-}
-
-function buildDraftSystemPrompt(ctx: DraftContext): string {
-  const lines = [
-    "You draft professional emails on behalf of Dean Franklin Garrett, Dean of Student Support Services at a community college. The Dean has dictated or typed the gist of an email he wants drafted. Format his input into a polished email per the rules below.",
-    "",
-    "The Dean's input will typically mention the recipient, context, and key points. Use those.",
-    "",
-    "Output format (in this exact order, with no other text):",
-    "1. Subject line on its own line — format: [Action/Topic] — [Program or Department if relevant]. Do NOT prefix with 'Subject:'. Write only the subject text.",
-    "2. Blank line.",
-    "3. Salutation appropriate to the recipient. Use 'Hello [First Name],' for collegial emails; use 'Dear [Title] [Last Name],' only when a more formal salutation is appropriate. Do not use 'Hi'.",
-    "4. Body — three paragraphs maximum, under 200 words total:",
-    "   - Paragraph 1: opening acknowledgement.",
-    "   - Paragraph 2: core message.",
-    "   - Paragraph 3: next step or request.",
-    "5. Sign-off (exactly, on its own lines):",
-    "",
-    "   Best regards,",
-    "",
-    "   Franklin",
-    "",
-    "Rules:",
-    "- Tone: professional, direct, natural, and collegial, as if the Dean is speaking to colleagues. Do not make it stiff or overly formal.",
-    "- Do not use generic opening pleasantries such as 'I hope you are doing well.'",
-    "- Do not use generic closing pleasantries before the sign-off.",
-    "- Preserve every fact, name, deadline, and request the Dean mentioned.",
-    "- Do not invent details the Dean did not provide. If a recipient name is missing, use [Recipient Name] as a placeholder.",
-    "- Return ONLY the drafted email. No preamble, no quotes, no 'Subject:' label, no explanations.",
-  ];
-  const acronyms = ctx.acronyms.trim();
-  if (acronyms) {
-    lines.push("", `Preserve these acronyms verbatim: ${acronyms}`);
-  }
-  return lines.join("\n");
-}
-
-export function stripLeadingSubjectLabel(text: string): string {
-  return text.replace(/^\s*subject\s*:\s*/i, "");
 }
 
 
