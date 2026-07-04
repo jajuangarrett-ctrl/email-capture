@@ -5,6 +5,7 @@ export interface EmailCaptureSettings {
   openaiApiKey: string;
   inboxFolderPath: string;
   showAnotherAfterSave: boolean;
+  openSavedFileAfterSave: boolean;
   customAcronyms: string;
 }
 
@@ -12,6 +13,7 @@ export const DEFAULT_SETTINGS: EmailCaptureSettings = {
   openaiApiKey: "",
   inboxFolderPath: "AI Team/Team_Inbox",
   showAnotherAfterSave: true,
+  openSavedFileAfterSave: true,
   customAcronyms: "CalWORKs, VPSS, FJG",
 };
 
@@ -48,6 +50,16 @@ export class EmailCaptureSettingTab extends PluginSettingTab {
       .addToggle((t) =>
         t.setValue(this.plugin.settings.showAnotherAfterSave).onChange(async (v) => {
           this.plugin.settings.showAnotherAfterSave = v;
+          await this.plugin.saveSettings();
+        })
+      );
+
+    new Setting(containerEl)
+      .setName("Open saved file after save")
+      .setDesc("After saving an email draft, open the exact file that was created.")
+      .addToggle((t) =>
+        t.setValue(this.plugin.settings.openSavedFileAfterSave).onChange(async (v) => {
+          this.plugin.settings.openSavedFileAfterSave = v;
           await this.plugin.saveSettings();
         })
       );

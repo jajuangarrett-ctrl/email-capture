@@ -1,4 +1,4 @@
-import { App, ButtonComponent, Modal, Notice, Setting } from "obsidian";
+import { App, ButtonComponent, Modal, Notice, Setting, TFile } from "obsidian";
 import { saveEmail } from "./append";
 import {
   draftEmail,
@@ -182,9 +182,18 @@ export class CaptureModal extends Modal {
 
     const reopen = forceAnother || this.plugin.settings.showAnotherAfterSave;
     this.close();
+    if (this.plugin.settings.openSavedFileAfterSave) {
+      await this.openSavedFile(savedPath);
+    }
     if (reopen) {
       setTimeout(() => new CaptureModal(this.app, this.plugin).open(), 200);
     }
+  }
+
+  private async openSavedFile(path: string): Promise<void> {
+    const file = this.app.vault.getAbstractFileByPath(path);
+    if (!(file instanceof TFile)) return;
+    await this.app.workspace.getLeaf(false).openFile(file);
   }
 
   private setSaveButtonsDisabled(disabled: boolean) {
