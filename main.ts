@@ -11,22 +11,30 @@ export default class EmailCapturePlugin extends Plugin {
 
   async onload() {
     await this.loadSettings();
+    const openCapture = () => new CaptureModal(this.app, this).open();
 
-    this.addRibbonIcon("mail", "Capture email", () => {
-      new CaptureModal(this.app, this).open();
-    });
+    this.addRibbonIcon("mail", "Capture email", openCapture);
 
     this.addCommand({
       id: "capture",
       name: "Capture email",
-      callback: () => new CaptureModal(this.app, this).open(),
+      callback: openCapture,
     });
 
-    this.registerObsidianProtocolHandler("email-capture", () => {
-      new CaptureModal(this.app, this).open();
+    this.registerObsidianProtocolHandler("email-capture", openCapture);
+
+    this.app.workspace.onLayoutReady(() => {
+      this.recoverMissedAdvancedUriLaunch(openCapture);
     });
 
     this.addSettingTab(new EmailCaptureSettingTab(this.app, this));
+  }
+
+  private recoverMissedAdvancedUriLaunch(openCapture: () => void) {
+    const advancedUri = (this.app as any).plugins?.getPlugin?.("obsidian-advanced-uri");
+    if (advancedUri?.lastParameters?.commandid === `${this.manifest.id}:capture`) {
+      setTimeout(openCapture, 250);
+    }
   }
 
   async loadSettings() {
