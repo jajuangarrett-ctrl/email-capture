@@ -22,6 +22,10 @@ export default class EmailCapturePlugin extends Plugin {
       callback: () => new CaptureModal(this.app, this).open(),
     });
 
+    this.registerObsidianProtocolHandler("email-capture", () => {
+      new CaptureModal(this.app, this).open();
+    });
+
     this.addSettingTab(new EmailCaptureSettingTab(this.app, this));
   }
 
