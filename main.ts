@@ -39,6 +39,14 @@ export default class EmailCapturePlugin extends Plugin {
 
   async loadSettings() {
     this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+    const legacyCapturePaths = new Set([
+      "AI Team/Team_Inbox",
+      "AI Team/Team_Inbox/Email Drafts",
+    ]);
+    if (legacyCapturePaths.has(this.settings.inboxFolderPath)) {
+      this.settings.inboxFolderPath = DEFAULT_SETTINGS.inboxFolderPath;
+      await this.saveData(this.settings);
+    }
   }
 
   async saveSettings() {
