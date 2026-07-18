@@ -32,7 +32,7 @@ export class CaptureModal extends Modal {
 
     new Setting(contentEl)
       .setName("Email gist")
-      .setDesc("Tap Record to dictate, or type below. On Save, GPT-4o drafts the email per the standard format (subject line, three paragraphs, Best regards / Franklin sign-off) and writes the drafted email to AI Team/Team_Inbox. Requires OpenAI API key.")
+      .setDesc("Tap Record to dictate, or type below. On Save, GPT-4o drafts the email per the standard format (subject line, three paragraphs, Best regards / Franklin sign-off) and writes the captured draft to AI Team/Team_Inbox/Raw Email Drafts. Requires OpenAI API key.")
       .addTextArea((t) => {
         this.textArea = t.inputEl;
         t.inputEl.rows = 6;

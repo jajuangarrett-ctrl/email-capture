@@ -1,9 +1,9 @@
 {
   "id": "email-capture",
   "name": "Email Capture",
-  "version": "0.2.10",
+  "version": "0.2.11",
   "minAppVersion": "1.4.0",
-  "description": "Quick voice/text capture of emails. On save, GPT-4o drafts the email in Franklin's standard format and writes it to AI Team/Team_Inbox.",
+  "description": "Quick voice/text capture of emails. On save, GPT-4o drafts the email and writes it to AI Team/Team_Inbox/Raw Email Drafts.",
   "author": "Franklin Garrett",
   "authorUrl": "",
   "isDesktopOnly": false

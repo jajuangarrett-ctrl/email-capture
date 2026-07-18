@@ -11,7 +11,7 @@ export interface EmailCaptureSettings {
 
 export const DEFAULT_SETTINGS: EmailCaptureSettings = {
   openaiApiKey: "",
-  inboxFolderPath: "AI Team/Team_Inbox",
+  inboxFolderPath: "AI Team/Team_Inbox/Raw Email Drafts",
   showAnotherAfterSave: true,
   openSavedFileAfterSave: true,
   customAcronyms: "CalWORKs, VPSS, FJG",
@@ -32,11 +32,11 @@ export class EmailCaptureSettingTab extends PluginSettingTab {
     containerEl.createEl("h2", { text: "Email Capture" });
 
     new Setting(containerEl)
-      .setName("Inbox folder path")
-      .setDesc("Folder where each captured email is saved as its own file (relative to vault root).")
+      .setName("Raw email drafts folder path")
+      .setDesc("Folder where each captured email draft is saved as its own file (relative to vault root).")
       .addText((t) =>
         t
-          .setPlaceholder("AI Team/Team_Inbox")
+          .setPlaceholder("AI Team/Team_Inbox/Raw Email Drafts")
           .setValue(this.plugin.settings.inboxFolderPath)
           .onChange(async (v) => {
             this.plugin.settings.inboxFolderPath = v.trim() || DEFAULT_SETTINGS.inboxFolderPath;
