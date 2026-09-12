@@ -1,3 +1,4 @@
+import { CaptureVoice, captureKey, settingFields } from "./capture-live/panel";
 import { App, ButtonComponent, Modal, Notice, Setting, TFile } from "obsidian";
 import { saveEmail } from "./append";
 import {
@@ -9,6 +10,8 @@ import {
 import type EmailCapturePlugin from "../main";
 
 export class CaptureModal extends Modal {
+  private voice?: CaptureVoice;
+  private closed = false;
   private plugin: EmailCapturePlugin;
   private text = "";
 
@@ -61,11 +64,17 @@ export class CaptureModal extends Modal {
         b.setButtonText("Save & capture another").onClick(() => this.save(true));
       });
 
+    this.voice = new CaptureVoice(contentEl, this.app, "Email draft", {
+      fields: () => settingFields(contentEl, ['Email gist']),
+      ready: () => !this.closed && !this.busy && !this.recording,
+      save: async () => !!(await this.save(false))
+    }, () => captureKey(this.app, this.plugin.settings.openaiApiKey));
+
     setTimeout(() => this.textArea?.focus(), 0);
   }
 
   private async toggleRecord() {
-    if (this.busy || !this.recordButton) return;
+    if (this.busy || this.voice?.active || !this.recordButton) return;
 
     if (!this.recording) {
       if (!this.plugin.settings.openaiApiKey) {
@@ -121,7 +130,7 @@ export class CaptureModal extends Modal {
   }
 
   private async save(forceAnother: boolean) {
-    if (this.busy) {
+    if (this.busy || this.recording || this.closed) {
       new Notice("Voice capture still running.", 6000);
       return;
     }
@@ -149,11 +158,12 @@ export class CaptureModal extends Modal {
     this.saveButton?.setButtonText("Drafting...");
 
     let finalText = raw;
-    if (this.plugin.settings.openaiApiKey) {
+    const draftingKey = await captureKey(this.app, this.plugin.settings.openaiApiKey);
+    if (draftingKey) {
       try {
         finalText = await draftEmail(
           raw,
-          this.plugin.settings.openaiApiKey,
+          draftingKey,
           { acronyms: this.plugin.settings.customAcronyms }
         );
       } catch (e) {
@@ -188,6 +198,7 @@ export class CaptureModal extends Modal {
     if (reopen) {
       setTimeout(() => new CaptureModal(this.app, this.plugin).open(), 200);
     }
+    return savedPath;
   }
 
   private async openSavedFile(path: string): Promise<void> {
@@ -202,6 +213,7 @@ export class CaptureModal extends Modal {
   }
 
   onClose() {
+    this.closed = true; this.voice?.close();
     if (this.recorder) {
       this.recorder.cancel();
       this.recorder = null;
