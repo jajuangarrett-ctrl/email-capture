@@ -1,6 +1,6 @@
 {
   "name": "email-capture",
-  "version": "0.2.11",
+  "version": "0.3.0",
   "description": "Quick voice/text capture of emails. On save, GPT-4o drafts the email and writes it to AI Team/Team_Inbox/Raw Email Drafts.",
   "main": "main.js",
   "scripts": {
@@ -8,7 +8,12 @@
     "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
     "test": "vitest run"
   },
-  "keywords": ["obsidian-plugin", "obsidian", "email", "capture"],
+  "keywords": [
+    "obsidian-plugin",
+    "obsidian",
+    "email",
+    "capture"
+  ],
   "author": "Franklin Garrett",
   "license": "MIT",
   "devDependencies": {
